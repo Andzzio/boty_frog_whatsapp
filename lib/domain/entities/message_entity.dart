@@ -4,6 +4,7 @@ class MessageEntity {
   MessageEntity({
     required this.id,
     required this.senderId,
+    required this.senderName,
     required this.content,
     required this.timestamp,
     this.isRead = false,
@@ -15,6 +16,9 @@ class MessageEntity {
 
   /// The identifier of the user who sent the message.
   final String senderId;
+
+  /// The name of the user who sent the message.
+  final String senderName;
 
   /// The content of the message.
   final String content;

@@ -6,6 +6,7 @@ class MessageModel extends MessageEntity {
   MessageModel({
     required super.id,
     required super.senderId,
+    required super.senderName,
     required super.content,
     required super.timestamp,
     super.isRead,
@@ -13,15 +14,35 @@ class MessageModel extends MessageEntity {
   });
 
   /// Creates a [MessageModel] from a JSON map.
-  factory MessageModel.fromWhatsappJson(Map<String, dynamic> json) {
+  factory MessageModel.fromWhatsappJson(Map<String, dynamic> value) {
+    final contacts = value['contacts'] as List<dynamic>;
+    final contact = contacts[0] as Map<String, dynamic>;
+    final profile = contact['profile'] as Map<String, dynamic>;
+    final messages = value['messages'] as List<dynamic>;
+    final message = messages[0] as Map<String, dynamic>;
+    final text = message['text'] as Map<String, dynamic>;
+
     return MessageModel(
-      id: json['id'] as String,
-      senderId: json['senderId'] as String,
-      content: json['content'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      isRead: json['isRead'] as bool,
-      type: MessageType.fromString(json['type'] as String),
+      id: message['id'].toString(),
+      senderId: contact['wa_id'] as String,
+      senderName: profile['name'] as String,
+      content: text['body'] as String,
+      timestamp: DateTime.fromMillisecondsSinceEpoch(
+        int.parse(message['timestamp'] as String) * 1000,
+      ),
+      type: MessageType.fromString(message['type'] as String),
     );
+  }
+
+  /// Converts the [MessageModel] to a JSON map suitable for WhatsApp API.
+  Map<String, dynamic> toWhatsappJson() {
+    return {
+      'messaging_product': 'whatsapp',
+      'recipient_type': 'individual',
+      'to': senderId,
+      'type': 'text',
+      'text': {'preview_url': false, 'body': content},
+    };
   }
 
   /// Converts the [MessageModel] to a [MessageEntity].
@@ -29,6 +50,7 @@ class MessageModel extends MessageEntity {
     return MessageEntity(
       id: id,
       senderId: senderId,
+      senderName: senderName,
       content: content,
       timestamp: timestamp,
       isRead: isRead,
