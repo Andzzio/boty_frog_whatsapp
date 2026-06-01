@@ -4,6 +4,7 @@ import 'package:boty_frog/domain/entities/message_entity.dart';
 class MessageModel extends MessageEntity {
   /// Constructs a [MessageModel] with the given parameters.
   MessageModel({
+    required super.recipientId,
     required super.senderId,
     required super.senderName,
     required super.content,
@@ -21,10 +22,11 @@ class MessageModel extends MessageEntity {
     final messages = value['messages'] as List<dynamic>;
     final message = messages[0] as Map<String, dynamic>;
     final text = message['text'] as Map<String, dynamic>;
-
+    final metadata = value['metadata'] as Map<String, dynamic>;
     return MessageModel(
       id: message['id'].toString(),
       senderId: contact['wa_id'] as String,
+      recipientId: metadata['phone_number_id'] as String,
       senderName: profile['name'] as String,
       content: text['body'] as String,
       timestamp: DateTime.fromMillisecondsSinceEpoch(
@@ -39,6 +41,7 @@ class MessageModel extends MessageEntity {
     return MessageModel(
       id: entity.id,
       senderId: entity.senderId,
+      recipientId: entity.recipientId,
       senderName: entity.senderName,
       content: entity.content,
       timestamp: entity.timestamp,
@@ -52,7 +55,7 @@ class MessageModel extends MessageEntity {
     return {
       'messaging_product': 'whatsapp',
       'recipient_type': 'individual',
-      'to': senderId,
+      'to': recipientId,
       'type': 'text',
       'text': {'preview_url': false, 'body': content},
     };
@@ -63,6 +66,7 @@ class MessageModel extends MessageEntity {
     return MessageEntity(
       id: id,
       senderId: senderId,
+      recipientId: recipientId,
       senderName: senderName,
       content: content,
       timestamp: timestamp,

@@ -2,6 +2,7 @@
 class MessageEntity {
   /// Constructs a [MessageEntity] with the given parameters.
   MessageEntity({
+    required this.recipientId,
     required this.senderId,
     required this.senderName,
     required this.content,
@@ -13,6 +14,9 @@ class MessageEntity {
 
   /// The unique identifier for the message.
   final String? id;
+
+  /// The identifier of the use who recivied the message.
+  final String recipientId;
 
   /// The identifier of the user who sent the message.
   final String senderId;
@@ -41,6 +45,7 @@ class MessageEntity {
     DateTime? timestamp,
     bool? isRead,
     MessageType? type,
+    String? recipientId,
   }) {
     return MessageEntity(
       id: id ?? this.id,
@@ -50,6 +55,7 @@ class MessageEntity {
       timestamp: timestamp ?? this.timestamp,
       isRead: isRead ?? this.isRead,
       type: type ?? this.type,
+      recipientId: recipientId ?? this.recipientId,
     );
   }
 }

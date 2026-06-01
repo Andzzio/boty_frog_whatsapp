@@ -1,4 +1,4 @@
-import 'package:boty_frog/domain/entities/message_entity.dart';
+import 'package:boty_frog/domain/usecases/generate_simple_response_usecase.dart';
 import 'package:boty_frog/domain/usecases/receive_message_usecase.dart';
 import 'package:boty_frog/domain/usecases/send_message_usecase.dart';
 import 'package:dart_frog/dart_frog.dart';
@@ -50,13 +50,9 @@ Future<Response> onRequest(RequestContext context) async {
       'from ${receivedMessage.senderName}',
     );
 
-    final botReply = MessageEntity(
-      senderId: receivedMessage.senderId,
-      senderName: 'Boty Frog',
-      content:
-          'Hola ${receivedMessage.senderName}, gracias por tu mensaje: '
-          '"${receivedMessage.content}"',
-    );
+    final generatedSimpleResponse = context
+        .read<GenerateSimpleResponseUsecase>();
+    final botReply = await generatedSimpleResponse(receivedMessage);
 
     await sendMessage(botReply);
 
