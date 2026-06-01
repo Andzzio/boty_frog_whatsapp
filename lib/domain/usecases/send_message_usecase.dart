@@ -14,7 +14,7 @@ class SendMessageUsecase {
   final MessageRepository _messageRepository;
 
   /// Sends a message using the [MessageRepository].
-  Future<String> call(MessageEntity message) async {
+  Future<MessageEntity> call(MessageEntity message) async {
     return _messageRepository.sendMessage(message);
   }
 }

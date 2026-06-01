@@ -31,6 +31,26 @@ class MessageEntity {
 
   /// The type of the message.
   final MessageType type;
+
+  MessageEntity copyWith({
+    String? id,
+    String? senderId,
+    String? senderName,
+    String? content,
+    DateTime? timestamp,
+    bool? isRead,
+    MessageType? type,
+  }) {
+    return MessageEntity(
+      id: id ?? this.id,
+      senderId: senderId ?? this.senderId,
+      senderName: senderName ?? this.senderName,
+      content: content ?? this.content,
+      timestamp: timestamp ?? this.timestamp,
+      isRead: isRead ?? this.isRead,
+      type: type ?? this.type,
+    );
+  }
 }
 
 /// Enum representing the different types of messages.

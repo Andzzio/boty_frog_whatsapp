@@ -26,7 +26,7 @@ class MessageWhatsappApiDatasource implements MessageRemoteDatasource {
   }
 
   @override
-  Future<String> sendMessage(MessageEntity message) async {
+  Future<MessageEntity> sendMessage(MessageEntity message) async {
     final url = 'https://graph.facebook.com/v25.0/$_phoneId/messages';
 
     final messageModelToSend = MessageModel.fromEntity(message);
@@ -46,7 +46,13 @@ class MessageWhatsappApiDatasource implements MessageRemoteDatasource {
       final messages = response.data?['messages'] as List<dynamic>;
       final messageJson = messages[0] as Map<String, dynamic>;
       final messageId = messageJson['id'] as String;
-      return messageId;
+
+      final messageEntity = messageModelToSend.toEntity().copyWith(
+        id: messageId,
+        timestamp: DateTime.now(),
+      );
+
+      return messageEntity;
     } on DioException catch (e) {
       _logger.severe('Failed to send message: ${e.message}', e);
       rethrow;

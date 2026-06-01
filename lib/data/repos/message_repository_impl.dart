@@ -19,7 +19,7 @@ class MessageRepositoryImpl implements MessageRepository {
   }
 
   @override
-  Future<String> sendMessage(MessageEntity message) async {
+  Future<MessageEntity> sendMessage(MessageEntity message) async {
     return _remoteDatasource.sendMessage(message);
   }
 }
