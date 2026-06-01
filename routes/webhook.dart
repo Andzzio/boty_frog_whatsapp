@@ -1,3 +1,5 @@
+import 'package:boty_frog/domain/usecases/receive_message_usecase.dart';
+import 'package:boty_frog/domain/usecases/send_message_usecase.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:logging/logging.dart';
@@ -26,8 +28,29 @@ Future<Response> onRequest(RequestContext context) async {
   }
 
   if (request.method == HttpMethod.post) {
-    final body = await request.body();
-    _logger.info('Messages received: $body');
+    final body = await request.json() as Map<String, dynamic>;
+    final entries = body['entry'] as List<dynamic>;
+    final entry = entries[0] as Map<String, dynamic>;
+    final changes = entry['changes'] as List<dynamic>;
+    final change = changes[0] as Map<String, dynamic>;
+    final value = change['value'] as Map<String, dynamic>;
+
+    if (value.containsKey('statuses')) {
+      return Response();
+    }
+
+    final receiveMessage = context.read<ReceiveMessageUsecase>();
+    final sendMessage = context.read<SendMessageUsecase>();
+
+    final receivedMessage = await receiveMessage(value);
+
+    _logger.info(
+      'Messages received: ${receivedMessage.content} '
+      'from ${receivedMessage.senderName}',
+    );
+
+    await sendMessage(receivedMessage);
+
     return Response(body: 'Webhook received');
   }
 
