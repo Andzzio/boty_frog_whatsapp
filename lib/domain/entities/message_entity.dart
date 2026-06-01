@@ -32,6 +32,7 @@ class MessageEntity {
   /// The type of the message.
   final MessageType type;
 
+  /// Creates a copy of the [MessageEntity] with the given parameters.
   MessageEntity copyWith({
     String? id,
     String? senderId,

@@ -58,7 +58,7 @@ Future<Response> onRequest(RequestContext context) async {
           '"${receivedMessage.content}"',
     );
 
-    await sendMessage(botReply); // TODO: Obtener Message Entity y no ID
+    await sendMessage(botReply);
 
     return Response(body: 'Webhook received');
   }
