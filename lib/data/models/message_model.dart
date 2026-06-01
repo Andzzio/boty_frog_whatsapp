@@ -4,11 +4,11 @@ import 'package:boty_frog/domain/entities/message_entity.dart';
 class MessageModel extends MessageEntity {
   /// Constructs a [MessageModel] with the given parameters.
   MessageModel({
-    required super.id,
     required super.senderId,
     required super.senderName,
     required super.content,
-    required super.timestamp,
+    super.id,
+    super.timestamp,
     super.isRead,
     super.type,
   });
@@ -31,6 +31,19 @@ class MessageModel extends MessageEntity {
         int.parse(message['timestamp'] as String) * 1000,
       ),
       type: MessageType.fromString(message['type'] as String),
+    );
+  }
+
+  /// Creates a [MessageModel] from a [MessageEntity].
+  factory MessageModel.fromEntity(MessageEntity entity) {
+    return MessageModel(
+      id: entity.id,
+      senderId: entity.senderId,
+      senderName: entity.senderName,
+      content: entity.content,
+      timestamp: entity.timestamp,
+      isRead: entity.isRead,
+      type: entity.type,
     );
   }
 

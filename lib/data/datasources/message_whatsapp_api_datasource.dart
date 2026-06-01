@@ -29,6 +29,8 @@ class MessageWhatsappApiDatasource implements MessageRemoteDatasource {
   Future<String> sendMessage(MessageEntity message) async {
     final url = 'https://graph.facebook.com/v25.0/$_phoneId/messages';
 
+    final messageModelToSend = MessageModel.fromEntity(message);
+
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         url,
@@ -38,7 +40,7 @@ class MessageWhatsappApiDatasource implements MessageRemoteDatasource {
             'Authorization': 'Bearer $_token',
           },
         ),
-        data: (message as MessageModel).toWhatsappJson(),
+        data: messageModelToSend.toWhatsappJson(),
       );
 
       final messages = response.data?['messages'] as List<dynamic>;

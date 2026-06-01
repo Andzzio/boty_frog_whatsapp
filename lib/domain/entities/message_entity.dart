@@ -2,17 +2,17 @@
 class MessageEntity {
   /// Constructs a [MessageEntity] with the given parameters.
   MessageEntity({
-    required this.id,
     required this.senderId,
     required this.senderName,
     required this.content,
-    required this.timestamp,
+    this.timestamp,
+    this.id,
     this.isRead = false,
     this.type = MessageType.text,
   });
 
   /// The unique identifier for the message.
-  final String id;
+  final String? id;
 
   /// The identifier of the user who sent the message.
   final String senderId;
@@ -24,7 +24,7 @@ class MessageEntity {
   final String content;
 
   /// The timestamp when the message was sent.
-  final DateTime timestamp;
+  final DateTime? timestamp;
 
   /// Indicates whether the message has been read.
   final bool isRead;
