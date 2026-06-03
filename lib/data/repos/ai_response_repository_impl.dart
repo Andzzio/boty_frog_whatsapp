@@ -1,4 +1,5 @@
 import 'package:boty_frog/domain/datasources/ai_response_remote_datasource.dart';
+import 'package:boty_frog/domain/entities/conversation_entity.dart';
 import 'package:boty_frog/domain/entities/message_entity.dart';
 import 'package:boty_frog/domain/repos/ai_response_repository.dart';
 import 'package:dotenv/dotenv.dart';
@@ -13,13 +14,13 @@ class AiResponseRepositoryImpl implements AiResponseRepository {
 
   @override
   Future<MessageEntity> generateHistoryBasedResponse(
-    List<MessageEntity> messageHistory,
+    ConversationEntity conversation,
   ) async {
     final aiResponseModel = await _dataSource.generateHistoryBasedResponse(
-      messageHistory,
+      conversation,
     );
     final messageEntity = aiResponseModel.toMessageEntity(
-      recipientId: messageHistory.last.senderId,
+      recipientId: conversation.contact.phoneId,
       senderId: _env['WHATSAPP_PHONE_ID'] ?? 'id-notfound',
     );
     return messageEntity;

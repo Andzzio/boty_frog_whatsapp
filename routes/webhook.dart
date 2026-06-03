@@ -1,5 +1,8 @@
-import 'package:boty_frog/domain/usecases/generate_simple_response_usecase.dart';
+import 'package:boty_frog/domain/usecases/generate_history_based_response.dart';
+import 'package:boty_frog/domain/usecases/get_contact_usecase.dart';
+import 'package:boty_frog/domain/usecases/get_or_create_conversation_usecase.dart';
 import 'package:boty_frog/domain/usecases/receive_message_usecase.dart';
+import 'package:boty_frog/domain/usecases/save_conversation_usecase.dart';
 import 'package:boty_frog/domain/usecases/send_message_usecase.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:dotenv/dotenv.dart';
@@ -35,12 +38,18 @@ Future<Response> onRequest(RequestContext context) async {
     final changes = entry['changes'] as List<dynamic>;
     final change = changes[0] as Map<String, dynamic>;
     final value = change['value'] as Map<String, dynamic>;
-
+    final contactsJson = value['contacts'] as List<dynamic>;
     if (value.containsKey('statuses')) {
       return Response();
     }
 
     final receiveMessage = context.read<ReceiveMessageUsecase>();
+    final getContact = context.read<GetContactUsecase>();
+    final getOrCreateConversation = context
+        .read<GetOrCreateConversationUsecase>();
+    final saveConversation = context.read<SaveConversationUsecase>();
+    final generatedhistoryBasedResponse = context
+        .read<GenerateHistoryBasedResponse>();
     final sendMessage = context.read<SendMessageUsecase>();
 
     final receivedMessage = await receiveMessage(value);
@@ -50,9 +59,24 @@ Future<Response> onRequest(RequestContext context) async {
       'from ${receivedMessage.senderName}',
     );
 
-    final generatedSimpleResponse = context
-        .read<GenerateSimpleResponseUsecase>();
-    final botReply = await generatedSimpleResponse(receivedMessage);
+    final contact = await getContact(contactsJson);
+
+    if (contact == null) {
+      _logger.warning('No contact found in webhook payload, ignoring...');
+      return Response(body: 'Webhook received and ignored');
+    }
+
+    final conversation = await getOrCreateConversation(
+      contact: contact,
+    );
+
+    conversation.messages.add(receivedMessage);
+
+    final botReply = await generatedhistoryBasedResponse(conversation);
+
+    conversation.messages.add(botReply);
+
+    await saveConversation(conversation: conversation);
 
     await sendMessage(botReply);
 
