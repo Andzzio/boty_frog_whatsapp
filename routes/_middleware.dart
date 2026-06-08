@@ -21,6 +21,20 @@ import 'package:dotenv/dotenv.dart';
 Handler middleware(Handler handler) {
   initLogger();
   final env = DotEnv()..load();
+
+  const requiredVars = [
+    'API_KEY',
+    'WHATSAPP_PHONE_ID',
+    'WHATSAPP_API_TOKEN',
+    'VERIFY_TOKEN',
+  ];
+
+  for (final key in requiredVars) {
+    if ((env[key] ?? '').isEmpty) {
+      throw StateError('Variable de entorno requerida no configurada: $key');
+    }
+  }
+
   final dio = Dio();
   final messageWhatsappApiDatasource = MessageWhatsappApiDatasource(
     dio: dio,

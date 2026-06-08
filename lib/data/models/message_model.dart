@@ -61,6 +61,21 @@ class MessageModel extends MessageEntity {
     };
   }
 
+  /// Converts the [MessageModel] to a JSON map suitable for Claude API
+  Map<String, dynamic> toClaudeJson(String phoneId) {
+    final role = senderId == phoneId ? 'assistant' : 'user';
+    final finalContent = switch (type) {
+      MessageType.text => content,
+      MessageType.image => '[Imagen enviada]',
+      MessageType.audio => '[Audio enviado]',
+      MessageType.video => '[Video enviado]',
+      MessageType.file => '[Archivo enviado]',
+      MessageType.paymentLink => '[Link de pago de Izipay enviado]',
+    };
+
+    return {'role': role, 'content': finalContent};
+  }
+
   /// Converts the [MessageModel] to a [MessageEntity].
   MessageEntity toEntity() {
     return MessageEntity(

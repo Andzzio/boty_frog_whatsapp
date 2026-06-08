@@ -21,7 +21,7 @@ class AiResponseRepositoryImpl implements AiResponseRepository {
     );
     final messageEntity = aiResponseModel.toMessageEntity(
       recipientId: conversation.contact.phoneId,
-      senderId: _env['WHATSAPP_PHONE_ID'] ?? 'id-notfound',
+      senderId: _env['WHATSAPP_PHONE_ID']!,
     );
     return messageEntity;
   }
@@ -31,7 +31,7 @@ class AiResponseRepositoryImpl implements AiResponseRepository {
     final aiResponseModel = await _dataSource.generateSimpleResponse(message);
     final messageEntity = aiResponseModel.toMessageEntity(
       recipientId: message.senderId,
-      senderId: _env['WHATSAPP_PHONE_ID'] ?? 'id-notfound',
+      senderId: _env['WHATSAPP_PHONE_ID']!,
     );
 
     return messageEntity;

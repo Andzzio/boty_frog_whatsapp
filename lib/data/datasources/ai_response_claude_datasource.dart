@@ -1,5 +1,6 @@
 import 'package:boty_frog/data/constants/system_prompts.dart';
 import 'package:boty_frog/data/models/ai_response_model.dart';
+import 'package:boty_frog/data/models/message_model.dart';
 import 'package:boty_frog/domain/datasources/ai_response_remote_datasource.dart';
 import 'package:boty_frog/domain/entities/conversation_entity.dart';
 import 'package:boty_frog/domain/entities/message_entity.dart';
@@ -20,7 +21,7 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
   static final _logger = Logger('AiResponseClaudeDatasource');
 
   String get _systemPrompt => SystemPrompts.wspBotSystemPrompt;
-  String get _token => _env['API_KEY'] ?? '';
+  String get _token => _env['API_KEY']!;
   String get _url => 'https://api.anthropic.com/v1/messages';
   String get _model => 'claude-haiku-4-5';
 
@@ -28,15 +29,13 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
   Future<AiResponseModel> generateHistoryBasedResponse(
     ConversationEntity conversation,
   ) async {
-    final phoneId = _env['WHATSAPP_PHONE_ID'];
+    final phoneId = _env['WHATSAPP_PHONE_ID']!;
     final messages = conversation.messages
         .map(
-          (msg) => {
-            'role': msg.senderId == phoneId ? 'assistant' : 'user',
-            'content': msg.content,
-          },
+          (msg) => MessageModel.fromEntity(msg).toClaudeJson(phoneId),
         )
         .toList();
+
     final contactName = conversation.contact.name;
     messages.insert(0, {
       'role': 'user',

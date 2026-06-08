@@ -17,8 +17,8 @@ class MessageWhatsappApiDatasource implements MessageRemoteDatasource {
   final DotEnv _env;
   static final _logger = Logger('MessageWhatsappApiDatasource');
 
-  String get _token => _env['WHATSAPP_API_TOKEN'] ?? '';
-  String get _phoneId => _env['WHATSAPP_PHONE_ID'] ?? '';
+  String get _token => _env['WHATSAPP_API_TOKEN']!;
+  String get _phoneId => _env['WHATSAPP_PHONE_ID']!;
 
   @override
   Future<MessageEntity> receiveMessage(Map<String, dynamic> messageData) async {
