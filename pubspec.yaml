@@ -10,6 +10,7 @@ dependencies:
   dart_frog: ^1.2.6
   dio: ^5.9.2
   dotenv: ^4.2.0
+  firebase_admin_sdk: ^0.5.3
   logging: ^1.3.0
 
 dev_dependencies:

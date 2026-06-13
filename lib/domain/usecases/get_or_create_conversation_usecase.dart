@@ -15,6 +15,8 @@ class GetOrCreateConversationUsecase {
     if (conversation != null) return conversation;
     final newConversation = ConversationEntity(
       contact: contact,
+      id: contact.phoneId,
+      unreadCount: 0,
     );
 
     await _repo.saveConversation(conversation: newConversation);

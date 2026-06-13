@@ -1,5 +1,6 @@
 import 'package:boty_frog/domain/entities/contact_entity.dart';
 import 'package:boty_frog/domain/entities/conversation_entity.dart';
+import 'package:boty_frog/domain/entities/message_entity.dart';
 
 /// The Conversation Repo
 abstract class ConversationRepository {
@@ -11,4 +12,10 @@ abstract class ConversationRepository {
 
   /// Saves a [ConversationEntity].
   Future<void> saveConversation({required ConversationEntity conversation});
+
+  /// Add a [MessageEntity] in [ConversationEntity].
+  Future<void> addMessageInConversation({
+    required String conversationId,
+    required MessageEntity message,
+  });
 }

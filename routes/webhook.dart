@@ -1,9 +1,4 @@
-import 'package:boty_frog/domain/usecases/generate_history_based_response.dart';
-import 'package:boty_frog/domain/usecases/get_contact_usecase.dart';
-import 'package:boty_frog/domain/usecases/get_or_create_conversation_usecase.dart';
-import 'package:boty_frog/domain/usecases/receive_message_usecase.dart';
-import 'package:boty_frog/domain/usecases/save_conversation_usecase.dart';
-import 'package:boty_frog/domain/usecases/send_message_usecase.dart';
+import 'package:boty_frog/domain/usecases/process_incoming_message_usecase.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:logging/logging.dart';
@@ -43,44 +38,16 @@ Future<Response> onRequest(RequestContext context) async {
       return Response();
     }
 
-    final receiveMessage = context.read<ReceiveMessageUsecase>();
-    final getContact = context.read<GetContactUsecase>();
-    final getOrCreateConversation = context
-        .read<GetOrCreateConversationUsecase>();
-    final saveConversation = context.read<SaveConversationUsecase>();
-    final generatedhistoryBasedResponse = context
-        .read<GenerateHistoryBasedResponse>();
-    final sendMessage = context.read<SendMessageUsecase>();
-
-    final receivedMessage = await receiveMessage(value);
-
-    _logger.info(
-      'Messages received: ${receivedMessage.content} '
-      'from ${receivedMessage.senderName}',
+    final processIncomingMessage = context
+        .read<ProcessIncomingMessageUsecase>();
+    final processed = await processIncomingMessage(
+      messageData: value,
+      contactsJson: contactsJson,
     );
 
-    final contact = await getContact(contactsJson);
-
-    if (contact == null) {
-      _logger.warning('No contact found in webhook payload, ignoring...');
-      return Response(body: 'Webhook received and ignored');
-    }
-
-    final conversation = await getOrCreateConversation(
-      contact: contact,
-    );
-
-    conversation.messages.add(receivedMessage);
-
-    final botReply = await generatedhistoryBasedResponse(conversation);
-
-    conversation.messages.add(botReply);
-
-    await saveConversation(conversation: conversation);
-
-    await sendMessage(botReply);
-
-    return Response(body: 'Webhook received');
+    return processed
+        ? Response(body: 'Webhook received')
+        : Response(body: 'Webhook received and ignored');
   }
 
   _logger.warning('Method not allowed: ${request.method}');

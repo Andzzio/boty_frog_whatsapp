@@ -17,3 +17,5 @@ coverage/
 
 # env file
 .env
+#firestore
+service-account.json

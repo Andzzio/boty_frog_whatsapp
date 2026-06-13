@@ -1,6 +1,7 @@
-import 'package:boty_frog/domain/datasources/conversation_local_datasource.dart';
+import 'package:boty_frog/domain/datasources/conversation_datasource.dart';
 import 'package:boty_frog/domain/entities/contact_entity.dart';
 import 'package:boty_frog/domain/entities/conversation_entity.dart';
+import 'package:boty_frog/domain/entities/message_entity.dart';
 
 /// Conversation in memory Datasource implementation.
 class ConversationInMemoryDatasource implements ConversationLocalDatasource {
@@ -19,5 +20,16 @@ class ConversationInMemoryDatasource implements ConversationLocalDatasource {
     required ConversationEntity conversation,
   }) async {
     _conversations[conversation.contact.phoneId] = conversation;
+  }
+
+  @override
+  Future<void> addMessageInConversation({
+    required String conversationId,
+    required MessageEntity message,
+  }) async {
+    final conversation = _conversations[conversationId];
+    if (conversation != null) {
+      conversation.messages.add(message);
+    }
   }
 }
