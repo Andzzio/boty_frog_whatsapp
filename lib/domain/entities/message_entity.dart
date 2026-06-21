@@ -10,6 +10,9 @@ class MessageEntity {
     this.id,
     this.isRead = false,
     this.type = MessageType.text,
+    this.media,
+    this.status,
+    this.whatsappMessageId,
   });
 
   /// The unique identifier for the message.
@@ -36,6 +39,15 @@ class MessageEntity {
   /// The type of the message.
   final MessageType type;
 
+  /// The media URL associated with the message, if any.
+  final String? media;
+
+  /// The status of the message.
+  final String? status;
+
+  /// The WhatsApp message ID associated with the message.
+  final String? whatsappMessageId;
+
   /// Creates a copy of the [MessageEntity] with the given parameters.
   MessageEntity copyWith({
     String? id,
@@ -46,6 +58,9 @@ class MessageEntity {
     bool? isRead,
     MessageType? type,
     String? recipientId,
+    String? media,
+    String? status,
+    String? whatsappMessageId,
   }) {
     return MessageEntity(
       id: id ?? this.id,
@@ -56,6 +71,9 @@ class MessageEntity {
       isRead: isRead ?? this.isRead,
       type: type ?? this.type,
       recipientId: recipientId ?? this.recipientId,
+      media: media ?? this.media,
+      status: status ?? this.status,
+      whatsappMessageId: whatsappMessageId ?? this.whatsappMessageId,
     );
   }
 }
@@ -82,8 +100,12 @@ enum MessageType {
 
   /// Converts a string to a [MessageType] enum value.
   static MessageType fromString(String type) {
+    final cleanType = type.toLowerCase();
+    if (cleanType == 'document') {
+      return MessageType.file;
+    }
     return MessageType.values.firstWhere(
-      (element) => element.name == type.toLowerCase(),
+      (element) => element.name == cleanType,
       orElse: () => MessageType.text,
     );
   }

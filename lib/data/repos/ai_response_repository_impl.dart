@@ -1,37 +1,48 @@
 import 'package:boty_frog/domain/datasources/ai_response_remote_datasource.dart';
 import 'package:boty_frog/domain/entities/conversation_entity.dart';
 import 'package:boty_frog/domain/entities/message_entity.dart';
+import 'package:boty_frog/domain/entities/tenant_config_entity.dart';
 import 'package:boty_frog/domain/repos/ai_response_repository.dart';
-import 'package:dotenv/dotenv.dart';
 
-/// Datasource for AI Response API Calls using Claude API
+/// Implementation of [AiResponseRepository]
+/// delegating to [AiResponseRemoteDatasource].
 class AiResponseRepositoryImpl implements AiResponseRepository {
-  /// Constructs a [AiResponseRepositoryImpl] with the given data source.
-  AiResponseRepositoryImpl(this._dataSource, this._env);
+  /// Constructs an [AiResponseRepositoryImpl]
+  /// with the given [_dataSource].
+  AiResponseRepositoryImpl(this._dataSource);
 
-  final DotEnv _env;
   final AiResponseRemoteDatasource _dataSource;
 
   @override
   Future<MessageEntity> generateHistoryBasedResponse(
     ConversationEntity conversation,
+    TenantConfigEntity tenant,
   ) async {
     final aiResponseModel = await _dataSource.generateHistoryBasedResponse(
       conversation,
+      tenant,
     );
     final messageEntity = aiResponseModel.toMessageEntity(
       recipientId: conversation.contact.phoneId,
-      senderId: _env['WHATSAPP_PHONE_ID']!,
+      senderId: tenant.phoneId,
+      tenant: tenant,
     );
     return messageEntity;
   }
 
   @override
-  Future<MessageEntity> generateSimpleResponse(MessageEntity message) async {
-    final aiResponseModel = await _dataSource.generateSimpleResponse(message);
+  Future<MessageEntity> generateSimpleResponse(
+    MessageEntity message,
+    TenantConfigEntity tenant,
+  ) async {
+    final aiResponseModel = await _dataSource.generateSimpleResponse(
+      message,
+      tenant,
+    );
     final messageEntity = aiResponseModel.toMessageEntity(
       recipientId: message.senderId,
-      senderId: _env['WHATSAPP_PHONE_ID']!,
+      senderId: tenant.phoneId,
+      tenant: tenant,
     );
 
     return messageEntity;

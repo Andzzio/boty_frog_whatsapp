@@ -15,6 +15,22 @@ class ContactModel extends ContactEntity {
     return ContactModel(name: name, phoneId: phoneId);
   }
 
+  /// Creates a [ContactModel] from a JSON map.
+  factory ContactModel.fromJson(Map<String, dynamic> json) {
+    return ContactModel(
+      name: json['name'] as String,
+      phoneId: json['phoneId'] as String,
+    );
+  }
+
+  /// Converts the [ContactModel] to a JSON map.
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'phoneId': phoneId,
+    };
+  }
+
   /// Transform to entity.
   ContactEntity toEntity() {
     return ContactEntity(name: name, phoneId: phoneId);

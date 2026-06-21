@@ -1,14 +1,19 @@
 import 'package:boty_frog/domain/entities/message_entity.dart';
+import 'package:boty_frog/domain/entities/tenant_config_entity.dart';
 import 'package:boty_frog/domain/repos/ai_response_repository.dart';
 
-/// Use case for generating a simple AI response based on a given message.
+/// Usecase to trigger simple AI text generation.
 class GenerateSimpleResponseUsecase {
-  /// Constructs a [GenerateSimpleResponseUsecase] with the given repository.
+  /// Constructs a [GenerateSimpleResponseUsecase]
+  /// with the given [AiResponseRepository].
   GenerateSimpleResponseUsecase(this._repository);
   final AiResponseRepository _repository;
 
-  /// Executes the use case to generate a simple response for the given message.
-  Future<MessageEntity> call(MessageEntity message) async {
-    return _repository.generateSimpleResponse(message);
+  /// Invokes the usecase to generate a simple response for a message.
+  Future<MessageEntity> call(
+    MessageEntity message,
+    TenantConfigEntity tenant,
+  ) async {
+    return _repository.generateSimpleResponse(message, tenant);
   }
 }

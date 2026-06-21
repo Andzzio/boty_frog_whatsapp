@@ -1,14 +1,17 @@
 import 'package:boty_frog/domain/datasources/message_remote_datasource.dart';
 import 'package:boty_frog/domain/entities/message_entity.dart';
+import 'package:boty_frog/domain/entities/tenant_config_entity.dart';
 import 'package:boty_frog/domain/repos/message_repository.dart';
 
-/// Implementation of the [MessageRepository] interface.
+/// Implementation of [MessageRepository]
+/// delegating to [MessageRemoteDatasource].
 class MessageRepositoryImpl implements MessageRepository {
-  /// Constructs a [MessageRepositoryImpl].
-  MessageRepositoryImpl({required MessageRemoteDatasource remoteDatasource})
-    : _remoteDatasource = remoteDatasource;
+  /// Constructs a [MessageRepositoryImpl]
+  /// with the given [remoteDatasource].
+  MessageRepositoryImpl({
+    required MessageRemoteDatasource remoteDatasource,
+  }) : _remoteDatasource = remoteDatasource;
 
-  /// The remote datasource for message API calls.
   final MessageRemoteDatasource _remoteDatasource;
 
   @override
@@ -19,7 +22,10 @@ class MessageRepositoryImpl implements MessageRepository {
   }
 
   @override
-  Future<MessageEntity> sendMessage(MessageEntity message) async {
-    return _remoteDatasource.sendMessage(message);
+  Future<MessageEntity> sendMessage(
+    MessageEntity message,
+    TenantConfigEntity tenant,
+  ) async {
+    return _remoteDatasource.sendMessage(message, tenant);
   }
 }

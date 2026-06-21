@@ -1,10 +1,14 @@
 import 'package:boty_frog/domain/entities/message_entity.dart';
+import 'package:boty_frog/domain/entities/tenant_config_entity.dart';
 
-/// Datasource for Message API Calls
+/// Remote datasource interface to handle sending and receiving messages.
 abstract class MessageRemoteDatasource {
-  /// Sends a message to the recipient and returns the message Entity.
-  Future<MessageEntity> sendMessage(MessageEntity message);
+  /// Sends a message using the credentials from the [tenant] configuration.
+  Future<MessageEntity> sendMessage(
+    MessageEntity message,
+    TenantConfigEntity tenant,
+  );
 
-  /// Receives a message from the specified data and returns the message Entity.
+  /// Parsers incoming webhook payload data into a [MessageEntity].
   Future<MessageEntity> receiveMessage(Map<String, dynamic> messageData);
 }

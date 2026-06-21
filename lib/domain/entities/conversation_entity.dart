@@ -9,6 +9,7 @@ class ConversationEntity {
     required this.id,
     required this.unreadCount,
     this.lastMessage,
+    this.isBotActive = true,
     List<MessageEntity>? messages,
   }) : messages = messages ?? [];
 
@@ -27,12 +28,16 @@ class ConversationEntity {
   /// Last [MessageEntity] sent.
   final MessageEntity? lastMessage;
 
+  /// Indicates if the bot is active for this conversation.
+  final bool isBotActive;
+
   /// Clones [ConversationEntity] and returns it.
   ConversationEntity copyWith({
     ContactEntity? contact,
     String? id,
     int? unreadCount,
     MessageEntity? lastMessage,
+    bool? isBotActive,
     List<MessageEntity>? messages,
   }) {
     return ConversationEntity(
@@ -40,6 +45,7 @@ class ConversationEntity {
       id: id ?? this.id,
       unreadCount: unreadCount ?? this.unreadCount,
       lastMessage: lastMessage ?? this.lastMessage,
+      isBotActive: isBotActive ?? this.isBotActive,
       messages: messages ?? this.messages,
     );
   }

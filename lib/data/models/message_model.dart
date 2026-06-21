@@ -12,6 +12,9 @@ class MessageModel extends MessageEntity {
     super.timestamp,
     super.isRead,
     super.type,
+    super.media,
+    super.status,
+    super.whatsappMessageId,
   });
 
   /// Creates a [MessageModel] from a JSON map.
@@ -21,18 +24,47 @@ class MessageModel extends MessageEntity {
     final profile = contact['profile'] as Map<String, dynamic>;
     final messages = value['messages'] as List<dynamic>;
     final message = messages[0] as Map<String, dynamic>;
-    final text = message['text'] as Map<String, dynamic>;
     final metadata = value['metadata'] as Map<String, dynamic>;
+
+    final typeStr = message['type'] as String? ?? 'text';
+    final type = MessageType.fromString(typeStr);
+
+    var content = '';
+    String? media;
+    if (type == MessageType.text) {
+      final text = message['text'] as Map<String, dynamic>?;
+      content = text?['body'] as String? ?? '';
+    } else if (type == MessageType.image) {
+      final image = message['image'] as Map<String, dynamic>?;
+      content = image?['caption'] as String? ?? '';
+      media = image?['id'] as String?;
+    } else if (type == MessageType.audio) {
+      final audio = message['audio'] as Map<String, dynamic>?;
+      content = '';
+      media = audio?['id'] as String?;
+    } else if (type == MessageType.video) {
+      final video = message['video'] as Map<String, dynamic>?;
+      content = video?['caption'] as String? ?? '';
+      media = video?['id'] as String?;
+    } else if (type == MessageType.file) {
+      final document = message['document'] as Map<String, dynamic>?;
+      content = '';
+      media = document?['id'] as String?;
+    } else {
+      content = '';
+    }
+
     return MessageModel(
       id: message['id'].toString(),
       senderId: contact['wa_id'] as String,
       recipientId: metadata['phone_number_id'] as String,
       senderName: profile['name'] as String,
-      content: text['body'] as String,
+      content: content,
       timestamp: DateTime.fromMillisecondsSinceEpoch(
-        int.parse(message['timestamp'] as String) * 1000,
+        int.parse(message['timestamp'] as String? ?? '0') * 1000,
       ),
-      type: MessageType.fromString(message['type'] as String),
+      type: type,
+      media: media,
     );
   }
 
@@ -47,23 +79,126 @@ class MessageModel extends MessageEntity {
       timestamp: entity.timestamp,
       isRead: entity.isRead,
       type: entity.type,
+      media: entity.media,
+      status: entity.status,
     );
+  }
+
+  /// Creates a [MessageModel] from a JSON map.
+  factory MessageModel.fromJson(Map<String, dynamic> json, {String? id}) {
+    DateTime? parsedTime;
+    final rawTime = json['timestamp'];
+    if (rawTime is DateTime) {
+      parsedTime = rawTime;
+    } else if (rawTime is String) {
+      parsedTime = DateTime.tryParse(rawTime);
+    } else if (rawTime is int) {
+      parsedTime = DateTime.fromMillisecondsSinceEpoch(rawTime);
+    }
+    return MessageModel(
+      id: id ?? json['id'] as String?,
+      recipientId: json['recipientId'] as String? ?? '',
+      senderId: json['senderId'] as String? ?? '',
+      senderName: json['senderName'] as String? ?? '',
+      content: json['content'] as String? ?? '',
+      timestamp: parsedTime,
+      isRead: json['isRead'] as bool? ?? false,
+      type: MessageType.fromString(json['type'] as String? ?? 'text'),
+      media: json['media'] as String?,
+      status: json['status'] as String?,
+    );
+  }
+
+  /// Converts the [MessageModel] to a JSON map.
+  Map<String, dynamic> toJson() {
+    return {
+      'recipientId': recipientId,
+      'senderId': senderId,
+      'senderName': senderName,
+      'content': content,
+      'timestamp': timestamp,
+      'isRead': isRead,
+      'type': type.name,
+      'media': media,
+      'status': status,
+    };
   }
 
   /// Converts the [MessageModel] to a JSON map suitable for WhatsApp API.
   Map<String, dynamic> toWhatsappJson() {
-    return {
+    final basePayload = <String, dynamic>{
       'messaging_product': 'whatsapp',
       'recipient_type': 'individual',
       'to': recipientId,
-      'type': 'text',
-      'text': {'preview_url': false, 'body': content},
     };
+
+    switch (type) {
+      case MessageType.text:
+        return {
+          ...basePayload,
+          'type': 'text',
+          'text': {'preview_url': false, 'body': content},
+        };
+      case MessageType.paymentLink:
+        return {
+          ...basePayload,
+          'type': 'text',
+          'text': {'preview_url': true, 'body': content},
+        };
+      case MessageType.image:
+        return {
+          ...basePayload,
+          'type': 'image',
+          'image': {
+            'link': media,
+            if (content.isNotEmpty) 'caption': content,
+          },
+        };
+      case MessageType.video:
+        return {
+          ...basePayload,
+          'type': 'video',
+          'video': {
+            'link': media,
+            if (content.isNotEmpty) 'caption': content,
+          },
+        };
+      case MessageType.audio:
+        return {
+          ...basePayload,
+          'type': 'audio',
+          'audio': {
+            'link': media,
+          },
+        };
+      case MessageType.file:
+        final filename = _getFilenameFromUrl(media ?? '');
+        return {
+          ...basePayload,
+          'type': 'document',
+          'document': {
+            'link': media,
+            'filename': filename,
+            if (content.isNotEmpty) 'caption': content,
+          },
+        };
+    }
   }
 
-  /// Converts the [MessageModel] to a JSON map suitable for Claude API
-  Map<String, dynamic> toClaudeJson(String phoneId) {
-    final role = senderId == phoneId ? 'assistant' : 'user';
+  String _getFilenameFromUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      final path = uri.pathSegments.last;
+      final decodedPath = Uri.decodeComponent(path);
+      return decodedPath.split('/').last;
+    } catch (_) {
+      return 'documento.pdf';
+    }
+  }
+
+  /// Converts the [MessageModel] to a JSON map suitable for Claude API.
+  Map<String, dynamic> toClaudeJson(String conversationId) {
+    final role = senderId == conversationId ? 'user' : 'assistant';
     final finalContent = switch (type) {
       MessageType.text => content,
       MessageType.image => '[Imagen enviada]',
@@ -87,6 +222,8 @@ class MessageModel extends MessageEntity {
       timestamp: timestamp,
       isRead: isRead,
       type: type,
+      media: media,
+      status: status,
     );
   }
 }
