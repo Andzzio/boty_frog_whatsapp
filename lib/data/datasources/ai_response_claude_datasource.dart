@@ -71,7 +71,12 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
       },
       {
         'name': 'obtener_metodos_pago',
-        'description': 'Obtiene los metodos de pago aceptados por el negocio.',
+        'description':
+            'Obtiene los métodos de pago aceptados por el negocio. '
+            'Úsala cuando el cliente pregunte por formas de pago, '
+            'cuentas bancarias, transferencias, efectivo, o billeteras '
+            'digitales peruanas como Yape, Plin, BCP, BBVA, Interbank '
+            'o Yapear.',
         'input_schema': {
           'type': 'object',
           'properties': <String, dynamic>{}
@@ -80,7 +85,10 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
       {
         'name': 'obtener_metodos_envio',
         'description':
-            'Obtiene los metodos y zonas de envio con sus costos.',
+            'Obtiene los métodos y zonas de envío con sus respectivos '
+            'costos. Úsala cuando el cliente pregunte por envíos, '
+            'entregas, delivery, costos de despacho, envíos a '
+            'provincia, Olva Courier o Shalom.',
         'input_schema': {
           'type': 'object',
           'properties': <String, dynamic>{}
