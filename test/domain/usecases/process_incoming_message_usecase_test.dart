@@ -172,4 +172,65 @@ void main() {
           )).called(1);
     },
   );
+
+  test(
+    'deactivates bot when the message is a checkout order summary',
+    () async {
+      final orderMessage = MessageEntity(
+        id: 'msg_order_123',
+        recipientId: 'phone_123',
+        senderId: 'user_123',
+        senderName: 'André',
+        content: '🛒 *Nuevo Pedido - Zara*\nProductos:\n1. Polo L',
+      );
+
+      final mockConversation = ConversationEntity(
+        contact: contact,
+        id: 'user_123',
+        unreadCount: 0,
+      );
+
+      when(() => mockReceiveMessage(any()))
+          .thenAnswer((_) async => orderMessage);
+      when(() => mockGetContact(any())).thenAnswer((_) async => contact);
+      when(() => mockGetOrCreateConversation(
+            contact: any(named: 'contact'),
+            tenant: any(named: 'tenant'),
+          )).thenAnswer((_) async => mockConversation);
+
+      when(() => mockAddMessageInConversation(
+            conversationId: any(named: 'conversationId'),
+            message: any(named: 'message'),
+            tenant: any(named: 'tenant'),
+          )).thenAnswer((_) async => {});
+
+      when(() => mockGenerateHistoryBasedResponse(any(), any()))
+          .thenAnswer((_) async => botReply);
+
+      when(() => mockSendMessage(any(), any()))
+          .thenAnswer((_) async => botReply);
+
+      ConversationEntity? savedConversation;
+      when(() => mockSaveConversation(
+            conversation: any(named: 'conversation'),
+            tenant: any(named: 'tenant'),
+          )).thenAnswer((invocation) async {
+        savedConversation =
+            invocation.namedArguments[#conversation] as ConversationEntity?;
+      });
+
+      final result = await usecase(
+        messageData: <String, dynamic>{'some': 'data'},
+        contactsJson: <dynamic>[],
+        tenant: tenant,
+      );
+
+      expect(result, isTrue);
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(savedConversation, isNotNull);
+      expect(savedConversation!.isBotActive, isFalse);
+    },
+  );
 }

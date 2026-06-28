@@ -161,14 +161,21 @@ class ProcessIncomingMessageUsecase {
             receivedMessage.type == MessageType.video ||
             receivedMessage.type == MessageType.file;
 
+        final isOrder = receivedMessage.content.contains('🛒 *Nuevo Pedido') ||
+            receivedMessage.content.contains('*Nuevo Pedido -');
+
         final finalConversation = updatedConversation.copyWith(
           messages: [...updatedConversation.messages, botReply],
           lastMessage: botReply,
           unreadCount: updatedConversation.unreadCount + 1,
-          isBotActive: !isMultimedia && updatedConversation.isBotActive,
+          isBotActive:
+              !isMultimedia && !isOrder && updatedConversation.isBotActive,
         );
 
-        await saveConversation(conversation: finalConversation, tenant: tenant);
+        await saveConversation(
+          conversation: finalConversation,
+          tenant: tenant,
+        );
       },
     );
 
