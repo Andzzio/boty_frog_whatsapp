@@ -6,6 +6,7 @@ import 'package:boty_frog/domain/datasources/ai_response_remote_datasource.dart'
 import 'package:boty_frog/domain/entities/conversation_entity.dart';
 import 'package:boty_frog/domain/entities/message_entity.dart';
 import 'package:boty_frog/domain/entities/tenant_config_entity.dart';
+import 'package:boty_frog/domain/usecases/get_business_info_usecase.dart';
 import 'package:boty_frog/domain/usecases/search_products_usecase.dart';
 import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
@@ -16,11 +17,14 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
   AiResponseClaudeDatasource({
     required Dio dio,
     required SearchProductsUsecase searchProductsUsecase,
+    required GetBusinessInfoUsecase getBusinessInfoUsecase,
   })  : _dio = dio,
-        _searchProductsUsecase = searchProductsUsecase;
+        _searchProductsUsecase = searchProductsUsecase,
+        _getBusinessInfoUsecase = getBusinessInfoUsecase;
 
   final Dio _dio;
   final SearchProductsUsecase _searchProductsUsecase;
+  final GetBusinessInfoUsecase _getBusinessInfoUsecase;
   static final _logger = Logger('AiResponseClaudeDatasource');
 
   String get _url => 'https://api.anthropic.com/v1/messages';
@@ -64,6 +68,23 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
           },
           'required': ['query']
         }
+      },
+      {
+        'name': 'obtener_metodos_pago',
+        'description': 'Obtiene los metodos de pago aceptados por el negocio.',
+        'input_schema': {
+          'type': 'object',
+          'properties': <String, dynamic>{}
+        }
+      },
+      {
+        'name': 'obtener_metodos_envio',
+        'description':
+            'Obtiene los metodos y zonas de envio con sus costos.',
+        'input_schema': {
+          'type': 'object',
+          'properties': <String, dynamic>{}
+        }
       }
     ];
 
@@ -92,74 +113,104 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
           .cast<Map<String, dynamic>>();
 
       if (stopReason == 'tool_use') {
-        final toolUseBlock = contents.firstWhere(
-          (block) => block['type'] == 'tool_use',
-          orElse: () => <String, dynamic>{},
-        );
+        final toolUseBlocks = contents
+            .where((block) => block['type'] == 'tool_use')
+            .toList();
 
-        if (toolUseBlock.isNotEmpty) {
-          final toolCallId = toolUseBlock['id'] as String;
-          final toolName = toolUseBlock['name'] as String;
-          final input = toolUseBlock['input'] as Map<String, dynamic>? ?? {};
+        if (toolUseBlocks.isNotEmpty) {
+          final toolResults = await Future.wait(
+            toolUseBlocks.map((toolUseBlock) async {
+              final toolCallId = toolUseBlock['id'] as String;
+              final toolName = toolUseBlock['name'] as String;
+              final input =
+                  (toolUseBlock['input'] as Map?)?.cast<String, dynamic>() ??
+                      <String, dynamic>{};
 
-          if (toolName == 'buscar_producto') {
-            final query = input['query'] as String? ?? '';
-            final products = await _searchProductsUsecase(
-              businessId: tenant.businessId,
-              query: query,
-            );
+              if (toolName == 'buscar_producto') {
+                final query = input['query'] as String? ?? '';
+                final products = await _searchProductsUsecase(
+                  businessId: tenant.businessId,
+                  query: query,
+                );
 
-            final productResults = products.map((p) => {
-              'id': p.id,
-              'name': p.name,
-              'description': p.description,
-              'variants': p.variants.map((v) => {
-                'name': v.name,
-                'price': v.price,
-                'discountPrice': v.discountPrice,
-                'stock': v.stock,
-                'sizes': v.sizes,
-              }).toList(),
-            }).toList();
+                final productResults = products.map((p) => {
+                  'id': p.id,
+                  'name': p.name,
+                  'description': p.description,
+                  'variants': p.variants.map((v) => {
+                    'name': v.name,
+                    'price': v.price,
+                    'discountPrice': v.discountPrice,
+                    'stock': v.stock,
+                    'sizes': v.sizes,
+                  }).toList(),
+                }).toList();
 
-            messages
-              ..add({
-                'role': 'assistant',
-                'content': contents,
-              })
-              ..add({
-                'role': 'user',
-                'content': [
-                  {
-                    'type': 'tool_result',
-                    'tool_use_id': toolCallId,
-                    'content': jsonEncode(productResults),
-                  }
-                ]
-              });
+                return {
+                  'type': 'tool_result',
+                  'tool_use_id': toolCallId,
+                  'content': jsonEncode(productResults),
+                };
+              } else if (toolName == 'obtener_metodos_pago') {
+                final info = await _getBusinessInfoUsecase(tenant.businessId);
+                return {
+                  'type': 'tool_result',
+                  'tool_use_id': toolCallId,
+                  'content': jsonEncode(info.paymentMethods),
+                };
+              } else if (toolName == 'obtener_metodos_envio') {
+                final info = await _getBusinessInfoUsecase(tenant.businessId);
+                final shippingResults = info.shippingZones.map((z) => {
+                  'name': z.name,
+                  'price': z.price,
+                  'description': z.description,
+                }).toList();
+                return {
+                  'type': 'tool_result',
+                  'tool_use_id': toolCallId,
+                  'content': jsonEncode(shippingResults),
+                };
+              }
 
-            response = await _dio.post<Map<String, dynamic>>(
-              _url,
-              options: Options(
-                headers: {
-                  'x-api-key': tenant.aiApiKey,
-                  'anthropic-version': '2023-06-01',
-                  'content-type': 'application/json',
-                },
-              ),
-              data: {
-                'model': _model,
-                'max_tokens': 1024,
-                'cache_control': {'type': 'ephemeral'},
-                'system': PromptTemplate.build(tenant),
-                'tools': tools,
-                'messages': messages,
+              return {
+                'type': 'tool_result',
+                'tool_use_id': toolCallId,
+                'content': 'Tool not found',
+              };
+            }),
+          );
+
+          messages
+            ..add({
+              'role': 'assistant',
+              'content': contents,
+            })
+            ..add({
+              'role': 'user',
+              'content': toolResults,
+            });
+
+          response = await _dio.post<Map<String, dynamic>>(
+            _url,
+            options: Options(
+              headers: {
+                'x-api-key': tenant.aiApiKey,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json',
               },
-            );
+            ),
+            data: {
+              'model': _model,
+              'max_tokens': 1024,
+              'cache_control': {'type': 'ephemeral'},
+              'system': PromptTemplate.build(tenant),
+              'tools': tools,
+              'messages': messages,
+            },
+          );
 
-            contents = (response.data?['content'] as List<dynamic>? ?? [])
-                .cast<Map<String, dynamic>>();
-          }
+          contents = (response.data?['content'] as List<dynamic>? ?? [])
+              .cast<Map<String, dynamic>>();
         }
       }
 

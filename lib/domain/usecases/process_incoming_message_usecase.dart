@@ -1,3 +1,4 @@
+import 'package:boty_frog/core/debounce_manager.dart';
 import 'package:boty_frog/domain/entities/message_entity.dart';
 import 'package:boty_frog/domain/entities/tenant_config_entity.dart';
 import 'package:boty_frog/domain/usecases/add_message_in_conversation_usecase.dart';
@@ -26,6 +27,7 @@ class ProcessIncomingMessageUsecase {
     required this.sendMessage,
     required this.addMessageInConversation,
     required this.uploadMessageMedia,
+    this.debounceDuration = const Duration(seconds: 3),
   });
 
   /// Usecase to parse incoming message payload.
@@ -51,6 +53,9 @@ class ProcessIncomingMessageUsecase {
 
   /// Usecase to upload message media (images) to storage.
   final UploadMessageMediaUsecase uploadMessageMedia;
+
+  /// The duration to debounce processing.
+  final Duration debounceDuration;
 
   /// Executes the orchestrator logic for an incoming webhook message.
   Future<bool> call({
@@ -100,7 +105,7 @@ class ProcessIncomingMessageUsecase {
       return false;
     }
 
-    var conversation = await getOrCreateConversation(
+    final conversation = await getOrCreateConversation(
       contact: contact,
       tenant: tenant,
     );
@@ -129,33 +134,44 @@ class ProcessIncomingMessageUsecase {
       tenant: tenant,
     );
 
-    conversation = conversation.copyWith(
-      messages: [...conversation.messages, receivedMessage],
+    DebounceManager.instance.run(
+      conversation.id,
+      debounceDuration,
+      () async {
+        final updatedConversation = await getOrCreateConversation(
+          contact: contact,
+          tenant: tenant,
+        );
+
+        final botReply = await generatedhistoryBasedResponse(
+          updatedConversation,
+          tenant,
+        );
+
+        await addMessageInConversation(
+          conversationId: updatedConversation.id,
+          message: botReply,
+          tenant: tenant,
+        );
+
+        await sendMessage(botReply, tenant);
+
+        final isMultimedia = receivedMessage.type == MessageType.image ||
+            receivedMessage.type == MessageType.audio ||
+            receivedMessage.type == MessageType.video ||
+            receivedMessage.type == MessageType.file;
+
+        final finalConversation = updatedConversation.copyWith(
+          messages: [...updatedConversation.messages, botReply],
+          lastMessage: botReply,
+          unreadCount: updatedConversation.unreadCount + 1,
+          isBotActive: !isMultimedia && updatedConversation.isBotActive,
+        );
+
+        await saveConversation(conversation: finalConversation, tenant: tenant);
+      },
     );
 
-    final botReply = await generatedhistoryBasedResponse(conversation, tenant);
-
-    await addMessageInConversation(
-      conversationId: conversation.id,
-      message: botReply,
-      tenant: tenant,
-    );
-
-    await sendMessage(botReply, tenant);
-
-    final isMultimedia = receivedMessage.type == MessageType.image ||
-        receivedMessage.type == MessageType.audio ||
-        receivedMessage.type == MessageType.video ||
-        receivedMessage.type == MessageType.file;
-
-    conversation = conversation.copyWith(
-      messages: [...conversation.messages, botReply],
-      lastMessage: botReply,
-      unreadCount: conversation.unreadCount + 1,
-      isBotActive: !isMultimedia && conversation.isBotActive,
-    );
-
-    await saveConversation(conversation: conversation, tenant: tenant);
     return true;
   }
 }

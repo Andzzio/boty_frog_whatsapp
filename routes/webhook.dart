@@ -64,7 +64,13 @@ Future<Response> onRequest(RequestContext context) async {
       return Response();
     }
 
-    final contactsJson = value['contacts'] as List<dynamic>;
+    final contactsJson = value['contacts'] as List<dynamic>?;
+    final messagesJson = value['messages'] as List<dynamic>?;
+
+    if (contactsJson == null || messagesJson == null) {
+      _logger.warning('Webhook ignored: missing contacts or messages');
+      return Response(body: 'Webhook received and ignored');
+    }
 
     final metadata = value['metadata'] as Map<String, dynamic>;
     final phoneNumberId = metadata['phone_number_id'] as String;
