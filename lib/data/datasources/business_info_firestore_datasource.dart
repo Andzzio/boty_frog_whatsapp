@@ -21,14 +21,10 @@ class BusinessInfoFirestoreDatasource implements BusinessInfoDatasource {
 
     final businessData = businessDoc.data() ?? {};
 
-    final shippingZonesSnapshot = await firestore
-        .collection('businesses')
-        .doc(businessId)
-        .collection('shipping_zones')
-        .get();
-
-    final zones = shippingZonesSnapshot.docs.map((doc) {
-      return ShippingZoneModel.fromJson(doc.data(), doc.id);
+    final rawDelivery = businessData['deliveryMethods'] as List? ?? [];
+    final zones = rawDelivery.map((doc) {
+      final map = (doc as Map).cast<String, dynamic>();
+      return ShippingZoneModel.fromJson(map, map['name'] as String? ?? '');
     }).toList();
 
     return BusinessInfoModel.fromFirestore(businessData, zones);

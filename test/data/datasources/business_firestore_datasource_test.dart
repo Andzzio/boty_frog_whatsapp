@@ -31,21 +31,12 @@ class MockDocumentReference extends Mock
 class MockDocumentSnapshot extends Mock
     implements DocumentSnapshot<Map<String, dynamic>> {}
 
-class MockQuerySnapshot extends Mock
-    implements QuerySnapshot<Map<String, dynamic>> {}
-
-class MockQueryDocumentSnapshot extends Mock
-    implements QueryDocumentSnapshot<Map<String, dynamic>> {}
-
 void main() {
   late MockFirebaseApp mockFirebaseApp;
   late MockFirestore mockFirestore;
   late MockCollectionReference mockBusinessesCollection;
   late MockDocumentReference mockBusinessDoc;
   late MockDocumentSnapshot mockBusinessSnapshot;
-  late MockCollectionReference mockShippingZonesCollection;
-  late MockQuerySnapshot mockShippingZonesSnapshot;
-  late MockQueryDocumentSnapshot mockShippingZoneDoc;
   late BusinessInfoFirestoreDatasource datasource;
 
   setUp(() {
@@ -54,9 +45,6 @@ void main() {
     mockBusinessesCollection = MockCollectionReference();
     mockBusinessDoc = MockDocumentReference();
     mockBusinessSnapshot = MockDocumentSnapshot();
-    mockShippingZonesCollection = MockCollectionReference();
-    mockShippingZonesSnapshot = MockQuerySnapshot();
-    mockShippingZoneDoc = MockQueryDocumentSnapshot();
 
     datasource = BusinessInfoFirestoreDatasource(mockFirebaseApp);
 
@@ -92,19 +80,13 @@ void main() {
           'description': 'BCP CCI...',
         },
       ],
-    });
-
-    when(() => mockBusinessDoc.collection('shipping_zones'))
-        .thenReturn(mockShippingZonesCollection);
-    when(() => mockShippingZonesCollection.get())
-        .thenAnswer((_) async => mockShippingZonesSnapshot);
-    when(() => mockShippingZonesSnapshot.docs)
-        .thenReturn([mockShippingZoneDoc]);
-    when(() => mockShippingZoneDoc.id).thenReturn('zone_1');
-    when(() => mockShippingZoneDoc.data()).thenReturn({
-      'name': 'Lima Metropolitana',
-      'price': 10.0,
-      'description': 'Envío rápido a domicilio',
+      'deliveryMethods': [
+        {
+          'name': 'Lima Metropolitana',
+          'price': 10,
+          'description': 'Envío rápido a domicilio',
+        }
+      ],
     });
 
     final result = await datasource.getBusinessInfo(businessId);
@@ -118,7 +100,7 @@ void main() {
       ]),
     );
     expect(result.shippingZones, hasLength(1));
-    expect(result.shippingZones.first.id, 'zone_1');
+    expect(result.shippingZones.first.id, 'Lima Metropolitana');
     expect(result.shippingZones.first.name, 'Lima Metropolitana');
     expect(result.shippingZones.first.price, 10.0);
     expect(
