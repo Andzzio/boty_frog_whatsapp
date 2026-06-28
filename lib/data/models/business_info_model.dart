@@ -15,7 +15,17 @@ class BusinessInfoModel extends BusinessInfoEntity {
     List<ShippingZoneModel> zones,
   ) {
     final list = businessData['paymentMethods'] as List? ?? [];
-    final payments = List<String>.from(list);
+    final payments = list.map((item) {
+      if (item is Map) {
+        final name = item['name'] as String? ?? '';
+        final description = item['description'] as String? ?? '';
+        if (description.isNotEmpty) {
+          return '$name ($description)';
+        }
+        return name;
+      }
+      return item.toString();
+    }).toList();
     return BusinessInfoModel(
       paymentMethods: payments,
       shippingZones: zones,

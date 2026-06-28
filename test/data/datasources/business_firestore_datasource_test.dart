@@ -75,7 +75,23 @@ void main() {
     when(() => mockBusinessDoc.get())
         .thenAnswer((_) async => mockBusinessSnapshot);
     when(() => mockBusinessSnapshot.data()).thenReturn({
-      'paymentMethods': ['Yape', 'Plin', 'Transferencia'],
+      'paymentMethods': [
+        {
+          'name': 'Yape',
+          'type': 'efectivo',
+          'description': 'Celular 999888777',
+        },
+        {
+          'name': 'Plin',
+          'type': 'efectivo',
+          'description': 'Celular 999888777',
+        },
+        {
+          'name': 'Transferencia',
+          'type': 'transferencia',
+          'description': 'BCP CCI...',
+        },
+      ],
     });
 
     when(() => mockBusinessDoc.collection('shipping_zones'))
@@ -95,7 +111,11 @@ void main() {
 
     expect(
       result.paymentMethods,
-      containsAll(['Yape', 'Plin', 'Transferencia']),
+      containsAll([
+        'Yape (Celular 999888777)',
+        'Plin (Celular 999888777)',
+        'Transferencia (BCP CCI...)',
+      ]),
     );
     expect(result.shippingZones, hasLength(1));
     expect(result.shippingZones.first.id, 'zone_1');
