@@ -233,4 +233,186 @@ void main() {
       expect(savedConversation!.isBotActive, isFalse);
     },
   );
+
+  group('multimedia hand-off', () {
+    final imageMessage = MessageEntity(
+      id: 'msg_img_123',
+      recipientId: 'phone_123',
+      senderId: 'user_123',
+      senderName: 'André',
+      content: '',
+      type: MessageType.image,
+    );
+
+    final followUpText = MessageEntity(
+      id: 'msg_txt_123',
+      recipientId: 'phone_123',
+      senderId: 'user_123',
+      senderName: 'André',
+      content: 'Este de lino',
+    );
+
+    late ConversationEntity currentConversation;
+    late List<MessageEntity> incoming;
+    late List<MessageEntity> sentMessages;
+
+    void stubInfrastructure() {
+      currentConversation = ConversationEntity(
+        contact: contact,
+        id: 'user_123',
+        unreadCount: 0,
+      );
+      sentMessages = [];
+
+      when(
+        () => mockReceiveMessage(any()),
+      ).thenAnswer((_) async => incoming.removeAt(0));
+      when(() => mockGetContact(any())).thenAnswer((_) async => contact);
+      when(
+        () => mockGetOrCreateConversation(
+          contact: any(named: 'contact'),
+          tenant: any(named: 'tenant'),
+        ),
+      ).thenAnswer((_) async => currentConversation);
+      when(
+        () => mockAddMessageInConversation(
+          conversationId: any(named: 'conversationId'),
+          message: any(named: 'message'),
+          tenant: any(named: 'tenant'),
+        ),
+      ).thenAnswer((_) async {});
+      when(() => mockSendMessage(any(), any())).thenAnswer((invocation) async {
+        final message = invocation.positionalArguments[0] as MessageEntity;
+        sentMessages.add(message);
+        return message;
+      });
+      when(
+        () => mockSaveConversation(
+          conversation: any(named: 'conversation'),
+          tenant: any(named: 'tenant'),
+        ),
+      ).thenAnswer((invocation) async {
+        currentConversation =
+            invocation.namedArguments[#conversation] as ConversationEntity;
+      });
+    }
+
+    test(
+      'turns the bot off and replies with the fixed hand-off + catalog link',
+      () async {
+        incoming = [imageMessage];
+        stubInfrastructure();
+
+        final result = await usecase(
+          messageData: <String, dynamic>{'some': 'data'},
+          contactsJson: <dynamic>[],
+          tenant: tenant,
+        );
+
+        expect(result, isTrue);
+        expect(currentConversation.isBotActive, isFalse);
+        expect(sentMessages, hasLength(1));
+        expect(
+          sentMessages.single.content,
+          contains('Se te derivará con un agente especializado'),
+        );
+        expect(sentMessages.single.content, contains(tenant.catalogUrl));
+        expect(currentConversation.lastMessage, same(sentMessages.single));
+
+        verifyNever(() => mockGenerateHistoryBasedResponse(any(), any()));
+      },
+    );
+
+    test(
+      'a text sent right before the image does not keep the bot alive',
+      () async {
+        incoming = [followUpText, imageMessage];
+        stubInfrastructure();
+        when(
+          () => mockGenerateHistoryBasedResponse(any(), any()),
+        ).thenAnswer((_) async => botReply);
+
+        await usecase(
+          messageData: <String, dynamic>{'some': 'data'},
+          contactsJson: <dynamic>[],
+          tenant: tenant,
+        );
+        await usecase(
+          messageData: <String, dynamic>{'some': 'data'},
+          contactsJson: <dynamic>[],
+          tenant: tenant,
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        expect(currentConversation.isBotActive, isFalse);
+        expect(sentMessages, hasLength(1));
+        expect(sentMessages.single.content, contains(tenant.catalogUrl));
+        verifyNever(() => mockGenerateHistoryBasedResponse(any(), any()));
+      },
+    );
+
+    test(
+      'a text sent right after the image is stored without bot reply',
+      () async {
+        incoming = [imageMessage, followUpText];
+        stubInfrastructure();
+        when(
+          () => mockGenerateHistoryBasedResponse(any(), any()),
+        ).thenAnswer((_) async => botReply);
+
+        await Future.wait([
+          usecase(
+            messageData: <String, dynamic>{'some': 'data'},
+            contactsJson: <dynamic>[],
+            tenant: tenant,
+          ),
+          usecase(
+            messageData: <String, dynamic>{'some': 'data'},
+            contactsJson: <dynamic>[],
+            tenant: tenant,
+          ),
+        ]);
+
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        expect(currentConversation.isBotActive, isFalse);
+        expect(sentMessages, hasLength(1));
+        verifyNever(() => mockGenerateHistoryBasedResponse(any(), any()));
+      },
+    );
+
+    test(
+      'discards the AI reply if the bot is turned off while it is generated',
+      () async {
+        incoming = [followUpText];
+        stubInfrastructure();
+        when(() => mockGenerateHistoryBasedResponse(any(), any())).thenAnswer((
+          _,
+        ) async {
+          currentConversation = currentConversation.copyWith(
+            isBotActive: false,
+          );
+          return botReply;
+        });
+
+        await usecase(
+          messageData: <String, dynamic>{'some': 'data'},
+          contactsJson: <dynamic>[],
+          tenant: tenant,
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        expect(sentMessages, isEmpty);
+        expect(currentConversation.isBotActive, isFalse);
+        verifyNever(
+          () => mockSaveConversation(
+            conversation: any(named: 'conversation'),
+            tenant: any(named: 'tenant'),
+          ),
+        );
+      },
+    );
+  });
 }
