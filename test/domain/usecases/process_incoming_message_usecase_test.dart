@@ -414,5 +414,38 @@ void main() {
         );
       },
     );
+
+    test(
+      'turns the bot off when AI response flags shouldDeactivateBot',
+      () async {
+        incoming = [followUpText];
+        stubInfrastructure();
+        final productHandoffReply = MessageEntity(
+          recipientId: 'user_123',
+          senderId: 'phone_123',
+          senderName: 'bot_123',
+          content:
+              'Se te derivará con un agente especializado para brindarte una '
+              'mejor información.\n\nMientras tanto, te invito a ver nuestros '
+              'productos en nuestra página web: ${tenant.catalogUrl}',
+          shouldDeactivateBot: true,
+        );
+        when(
+          () => mockGenerateHistoryBasedResponse(any(), any()),
+        ).thenAnswer((_) async => productHandoffReply);
+
+        await usecase(
+          messageData: <String, dynamic>{'some': 'data'},
+          contactsJson: <dynamic>[],
+          tenant: tenant,
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+
+        expect(currentConversation.isBotActive, isFalse);
+        expect(sentMessages, hasLength(1));
+        expect(sentMessages.single.content, contains(tenant.catalogUrl));
+      },
+    );
   });
 }

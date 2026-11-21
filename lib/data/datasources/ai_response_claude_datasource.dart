@@ -8,6 +8,7 @@ import 'package:boty_frog/domain/entities/message_entity.dart';
 import 'package:boty_frog/domain/entities/tenant_config_entity.dart';
 import 'package:boty_frog/domain/usecases/get_business_info_usecase.dart';
 import 'package:boty_frog/domain/usecases/search_products_usecase.dart';
+import 'package:boty_frog/domain/utils/handoff_message.dart';
 import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
 
@@ -23,6 +24,8 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
         _getBusinessInfoUsecase = getBusinessInfoUsecase;
 
   final Dio _dio;
+  // Kept for DI compatibility while product search is disabled.
+  // ignore: unused_field
   final SearchProductsUsecase _searchProductsUsecase;
   final GetBusinessInfoUsecase _getBusinessInfoUsecase;
   static final _logger = Logger('AiResponseClaudeDatasource');
@@ -54,16 +57,19 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
 
     final tools = [
       {
-        'name': 'buscar_producto',
+        'name': 'derivar_consulta_producto',
         'description':
-            'Busca un producto por su nombre en el inventario para obtener '
-            'precios, stock y tallas disponibles.',
+            'Deriva inmediatamente la conversación a un agente especializado '
+            'y desactiva el bot cuando el cliente pregunta por un producto '
+            'específico, prenda, precio, stock, tallas, colores, modelos o '
+            'disponibilidad.',
         'input_schema': {
           'type': 'object',
           'properties': {
             'query': {
               'type': 'string',
-              'description': 'El nombre o término de búsqueda del producto.'
+              'description': 'El producto o prenda sobre el cual pregunta el '
+                  'cliente.'
             }
           },
           'required': ['query']
@@ -125,41 +131,28 @@ class AiResponseClaudeDatasource implements AiResponseRemoteDatasource {
             .where((block) => block['type'] == 'tool_use')
             .toList();
 
+        final requestsProductHandoff = toolUseBlocks.any(
+          (block) =>
+              block['name'] == 'derivar_consulta_producto' ||
+              block['name'] == 'buscar_producto',
+        );
+        if (requestsProductHandoff) {
+          _logger.info(
+            'Product query detected; handing off to agent and turning bot off.',
+          );
+          return AiResponseModel(
+            responseText: buildAgentHandoffMessage(tenant),
+            shouldDeactivateBot: true,
+          );
+        }
+
         if (toolUseBlocks.isNotEmpty) {
           final toolResults = await Future.wait(
             toolUseBlocks.map((toolUseBlock) async {
               final toolCallId = toolUseBlock['id'] as String;
               final toolName = toolUseBlock['name'] as String;
-              final input =
-                  (toolUseBlock['input'] as Map?)?.cast<String, dynamic>() ??
-                      <String, dynamic>{};
 
-              if (toolName == 'buscar_producto') {
-                final query = input['query'] as String? ?? '';
-                final products = await _searchProductsUsecase(
-                  businessId: tenant.businessId,
-                  query: query,
-                );
-
-                final productResults = products.map((p) => {
-                  'id': p.id,
-                  'name': p.name,
-                  'description': p.description,
-                  'variants': p.variants.map((v) => {
-                    'name': v.name,
-                    'price': v.price,
-                    'discountPrice': v.discountPrice,
-                    'stock': v.stock,
-                    'sizes': v.sizes,
-                  }).toList(),
-                }).toList();
-
-                return {
-                  'type': 'tool_result',
-                  'tool_use_id': toolCallId,
-                  'content': jsonEncode(productResults),
-                };
-              } else if (toolName == 'obtener_metodos_pago') {
+              if (toolName == 'obtener_metodos_pago') {
                 final info = await _getBusinessInfoUsecase(tenant.businessId);
                 return {
                   'type': 'tool_result',

@@ -2,7 +2,6 @@ import 'package:boty_frog/data/datasources/ai_response_claude_datasource.dart';
 import 'package:boty_frog/domain/entities/business_info_entity.dart';
 import 'package:boty_frog/domain/entities/contact_entity.dart';
 import 'package:boty_frog/domain/entities/conversation_entity.dart';
-import 'package:boty_frog/domain/entities/product_entity.dart';
 import 'package:boty_frog/domain/entities/shipping_zone_entity.dart';
 import 'package:boty_frog/domain/entities/tenant_config_entity.dart';
 import 'package:boty_frog/domain/usecases/get_business_info_usecase.dart';
@@ -66,12 +65,6 @@ void main() {
         'content': [
           {
             'type': 'tool_use',
-            'id': 'toolu_1',
-            'name': 'buscar_producto',
-            'input': <String, dynamic>{'query': 'polo'},
-          },
-          {
-            'type': 'tool_use',
             'id': 'toolu_2',
             'name': 'obtener_metodos_pago',
             'input': <String, dynamic>{},
@@ -93,18 +86,11 @@ void main() {
         'content': [
           {
             'type': 'text',
-            'text':
-                'Tenemos polo en stock. Puedes pagar con '
-                'Yape y el envío cuesta 10 soles.',
+            'text': 'Puedes pagar con Yape y el envío cuesta 10 soles.',
           }
         ],
       },
     );
-
-    when(() => mockSearchProducts(
-          businessId: any(named: 'businessId'),
-          query: 'polo',
-        )).thenAnswer((_) async => <ProductEntity>[]);
 
     when(() => mockGetBusinessInfo('biz_123'))
         .thenAnswer((_) async => BusinessInfoEntity(
@@ -140,17 +126,65 @@ void main() {
 
     expect(
       result.responseText,
-      equals(
-        'Tenemos polo en stock. Puedes pagar con '
-        'Yape y el envío cuesta 10 soles.',
-      ),
+      equals('Puedes pagar con Yape y el envío cuesta 10 soles.'),
     );
+    expect(result.shouldDeactivateBot, isFalse);
     expect(callCount, equals(2));
 
-    verify(() => mockSearchProducts(
-          businessId: 'biz_123',
-          query: 'polo',
-        )).called(1);
+    verifyNever(
+      () => mockSearchProducts(
+        businessId: any(named: 'businessId'),
+        query: any(named: 'query'),
+      ),
+    );
     verify(() => mockGetBusinessInfo('biz_123')).called(2);
+  });
+
+  test(
+      'hands off to agent and flags bot deactivation on '
+      'derivar_consulta_producto', () async {
+    final handoffResponse = Response<Map<String, dynamic>>(
+      requestOptions: RequestOptions(),
+      data: {
+        'stop_reason': 'tool_use',
+        'content': [
+          {
+            'type': 'tool_use',
+            'id': 'toolu_1',
+            'name': 'derivar_consulta_producto',
+            'input': <String, dynamic>{'query': 'pantalón casual negro'},
+          },
+        ],
+      },
+    );
+
+    var callCount = 0;
+    when(() => mockDio.post<Map<String, dynamic>>(
+          any(),
+          options: any(named: 'options'),
+          data: any(named: 'data'),
+        )).thenAnswer((_) async {
+      callCount++;
+      return handoffResponse;
+    });
+
+    final result = await datasource.generateHistoryBasedResponse(
+      conversation,
+      tenant,
+    );
+
+    expect(result.shouldDeactivateBot, isTrue);
+    expect(
+      result.responseText,
+      contains('Se te derivará con un agente especializado'),
+    );
+    expect(result.responseText, contains(tenant.catalogUrl));
+    expect(callCount, equals(1));
+    verifyNever(
+      () => mockSearchProducts(
+        businessId: any(named: 'businessId'),
+        query: any(named: 'query'),
+      ),
+    );
   });
 }

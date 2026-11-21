@@ -15,12 +15,33 @@ class ProductVariantModel extends ProductVariantEntity {
 
   /// Creates a [ProductVariantModel] from a JSON map.
   factory ProductVariantModel.fromJson(Map<String, dynamic> json) {
+    final rawSizes = json['sizes'] as List? ?? const [];
+    final parsedSizes = <String>[];
+    var computedStock = 0;
+    var hasSizeStock = false;
+
+    for (final item in rawSizes) {
+      if (item is Map) {
+        final size = (item['size'] ?? '').toString();
+        final itemStock = (item['stock'] as num?)?.toInt() ?? 0;
+        hasSizeStock = true;
+        computedStock += itemStock;
+        if (size.isNotEmpty) {
+          parsedSizes.add('$size (stock: $itemStock)');
+        }
+      } else if (item != null) {
+        parsedSizes.add(item.toString());
+      }
+    }
+
+    final rawStock = (json['stock'] as num?)?.toInt() ?? 0;
+
     return ProductVariantModel(
       sku: json['sku'] as String?,
       name: json['name'] as String? ?? '',
-      color: json['color'] as int?,
-      stock: json['stock'] as int? ?? 0,
-      sizes: List<String>.from(json['sizes'] as List? ?? []),
+      color: (json['color'] as num?)?.toInt(),
+      stock: hasSizeStock ? computedStock : rawStock,
+      sizes: parsedSizes,
       price: (json['price'] as num? ?? 0.0).toDouble(),
       discountPrice: json['discountPrice'] != null
           ? (json['discountPrice'] as num).toDouble()

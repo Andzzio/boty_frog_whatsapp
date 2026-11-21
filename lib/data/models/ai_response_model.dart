@@ -5,7 +5,10 @@ import 'package:boty_frog/domain/entities/tenant_config_entity.dart';
 /// Model representing the raw AI response text, extending [AiResponseEntity].
 class AiResponseModel extends AiResponseEntity {
   /// Constructs an [AiResponseModel] instance.
-  AiResponseModel({required super.responseText});
+  AiResponseModel({
+    required super.responseText,
+    super.shouldDeactivateBot = false,
+  });
 
   /// Map this model to a [MessageEntity] to be processed by usecases.
   MessageEntity toMessageEntity({
@@ -19,6 +22,7 @@ class AiResponseModel extends AiResponseEntity {
       senderName: tenant.botName,
       timestamp: DateTime.now(),
       senderId: senderId,
+      shouldDeactivateBot: shouldDeactivateBot,
     );
   }
 }

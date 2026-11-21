@@ -13,6 +13,7 @@ class MessageEntity {
     this.media,
     this.status,
     this.whatsappMessageId,
+    this.shouldDeactivateBot = false,
   });
 
   /// The unique identifier for the message.
@@ -48,6 +49,9 @@ class MessageEntity {
   /// The WhatsApp message ID associated with the message.
   final String? whatsappMessageId;
 
+  /// Whether this outgoing bot reply should deactivate the bot afterwards.
+  final bool shouldDeactivateBot;
+
   /// Creates a copy of the [MessageEntity] with the given parameters.
   MessageEntity copyWith({
     String? id,
@@ -61,6 +65,7 @@ class MessageEntity {
     String? media,
     String? status,
     String? whatsappMessageId,
+    bool? shouldDeactivateBot,
   }) {
     return MessageEntity(
       id: id ?? this.id,
@@ -74,6 +79,7 @@ class MessageEntity {
       media: media ?? this.media,
       status: status ?? this.status,
       whatsappMessageId: whatsappMessageId ?? this.whatsappMessageId,
+      shouldDeactivateBot: shouldDeactivateBot ?? this.shouldDeactivateBot,
     );
   }
 }
