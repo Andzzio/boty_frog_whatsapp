@@ -12,6 +12,9 @@ void initLogger() {
       final loggerName = record.loggerName;
       final message = record.message;
       stdout.writeln('[$time] [$level] [$loggerName]: $message');
+      if (record.stackTrace != null) {
+        stdout.writeln(record.stackTrace);
+      }
     },
   );
 }

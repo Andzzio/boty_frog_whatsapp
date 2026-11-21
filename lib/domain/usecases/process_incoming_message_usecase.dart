@@ -13,6 +13,7 @@ import 'package:boty_frog/domain/usecases/receive_message_usecase.dart';
 import 'package:boty_frog/domain/usecases/save_conversation_usecase.dart';
 import 'package:boty_frog/domain/usecases/send_message_usecase.dart';
 import 'package:boty_frog/domain/usecases/upload_message_media_usecase.dart';
+import 'package:boty_frog/domain/utils/handoff_message.dart';
 import 'package:logging/logging.dart';
 
 final _logger = Logger('ProcessIncomingMessageUsecase');
@@ -203,7 +204,7 @@ class ProcessIncomingMessageUsecase {
       recipientId: conversation.contact.phoneId,
       senderId: tenant.phoneId,
       senderName: tenant.botName,
-      content: _buildHandoffText(tenant),
+      content: buildAgentHandoffMessage(tenant),
       timestamp: DateTime.now(),
     );
 
@@ -260,6 +261,11 @@ class ProcessIncomingMessageUsecase {
         return;
       }
 
+      final isOrder =
+          _isOrderSummary(receivedMessage) ||
+          _pendingCustomerMessages(latestConversation).any(_isOrderSummary);
+      final shouldDeactivate = isOrder || botReply.shouldDeactivateBot;
+
       await addMessageInConversation(
         conversationId: latestConversation.id,
         message: botReply,
@@ -268,15 +274,11 @@ class ProcessIncomingMessageUsecase {
 
       await sendMessage(botReply, tenant);
 
-      final isOrder =
-          _isOrderSummary(receivedMessage) ||
-          _pendingCustomerMessages(latestConversation).any(_isOrderSummary);
-
       final finalConversation = latestConversation.copyWith(
         messages: [...latestConversation.messages, botReply],
         lastMessage: botReply,
         unreadCount: latestConversation.unreadCount + 1,
-        isBotActive: !isOrder && latestConversation.isBotActive,
+        isBotActive: !shouldDeactivate && latestConversation.isBotActive,
       );
 
       await saveConversation(conversation: finalConversation, tenant: tenant);
@@ -304,16 +306,6 @@ class ProcessIncomingMessageUsecase {
   static bool _isOrderSummary(MessageEntity message) {
     return message.content.contains('🛒 *Nuevo Pedido') ||
         message.content.contains('*Nuevo Pedido -');
-  }
-
-  static String _buildHandoffText(TenantConfigEntity tenant) {
-    const base =
-        'Se te derivará con un agente especializado para brindarte una '
-        'mejor información.';
-    final catalogUrl = tenant.catalogUrl.trim();
-    if (catalogUrl.isEmpty) return base;
-    return '$base\n\nMientras tanto, te invito a ver nuestros productos en '
-        'nuestra página web: $catalogUrl';
   }
 
   Future<T> _synchronized<T>(String key, Future<T> Function() action) async {
